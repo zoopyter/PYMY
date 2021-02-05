@@ -1,0 +1,16 @@
+pylint
+black
+psycopg2
+requests
+quantlib
+numpy
+scipy
+matplotlib
+ipython
+jupyter
+pandas
+sympy
+nose
+QuantLib-Python
+flask==1.1.2
+gunicorn==20.0.4

@@ -1,0 +1,86 @@
+stages:
+  - build
+  # - test
+  # - deploy
+
+before_script:
+  - apt-get update -qy
+  - apt-get install -qq git
+  - apt-get install -y lftp
+    # Setup SSH deploy keys
+  
+  - 'command -v ssh-agent >/dev/null || ( apt-get update -y && apt-get install openssh-client -y )'
+  - eval $(ssh-agent -s)
+
+  - echo "$SSH_PRIVATE_KEY" | ssh-add -
+  - mkdir -p ~/.ssh
+  - chmod 777 ~/.ssh
+
+  - ssh-keyscan $HOST >> ~/.ssh/known_hosts
+  - chmod 644 ~/.ssh/known_hosts
+  # - 'which ssh-agent || ( apt-get install -qq openssh-client )'
+  # - eval $(ssh-agent -s)
+  # - ssh-add -L <(echo "$SSH_PRIVATE_KEY")
+  # - mkdir -p ~/.ssh
+  # - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+
+build-test:
+  stage: build
+  script:
+    - lftp -e "open 172.26.1.30;user ftpuser 003311;mirror -X .* -X .*/ --reverse --verbose --delete ./ /app/ci-test/; bye;"
+    - ssh root@172.26.1.30 "cd /app/ci-test/ && docker stop metis_container && docker rm metis_container && exit"
+    - ssh root@172.26.1.30 "cd /app/ci-test/ && docker build -t metis_engine ./ && docker run -d -p 5000:5000 --name metis_container metis_engine && exit"
+    # && docker build -t metis_engine ./ && docker run -p 5000:5000  metis_engine && exit"
+    # docker run -p 5000:5000  metis_engine
+    # docker build -t metis_engine ./
+  only:
+    - develop
+
+# before_script:
+#   - apt-get update -qq
+#   - apt-get install -qq git
+#   - apt-get install -y lftp
+#   # Setup SSH deploy keys
+#   - 'which ssh-agent || ( apt-get install -qq openssh-client )'
+#   - eval $(ssh-agent -s)
+#   - ssh-add <(echo "$SSH_PRIVATE_KEY")
+#   - mkdir -p ~/.ssh
+#   - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+
+# test-upload-job:
+#   stage: build
+#   script:
+#     - apt-get update -qq && apt-get install -y -qq lftp
+#     - pwd
+#     #- lftp -c "set ftp:ssl-allow no; open -u $USERNAME,$PASSWORD $HOST; mirror -Rnev ./ ./public_html --ignore-time --parallel=10 --exclude-glob .git* --exclude .git/"
+#   only:
+#     - deploy
+#   when:
+#     - manual
+# build-code-job:
+#   stage: build
+#   script:
+#     - echo "Check the ruby version, then build some Ruby project files:"
+#     - python --version
+#   only:
+#     - develop
+    
+# test-code-job1:
+#   stage: test
+#   script:
+#     - echo "If the files are built successfully, test some files with one command:"
+#   only:
+#     - develop
+
+# test-code-job2:
+#   stage: test
+#   script:
+#     - echo "If the files are built successfully, test other files with a different command:"
+#   only:
+#     - develop
+# deploy_staging:
+#   stage: deploy
+#   script:
+#     - echo "Deploy to staging server"
+#   only:
+#     - master
